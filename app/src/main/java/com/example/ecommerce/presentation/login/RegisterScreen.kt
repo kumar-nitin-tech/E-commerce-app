@@ -1,6 +1,7 @@
 package com.example.ecommerce.presentation.login
 
 import android.annotation.SuppressLint
+import android.widget.Toast
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -14,12 +15,15 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.ClickableText
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Divider
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.OutlinedButton
@@ -51,15 +55,19 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.viewModelScope
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
 import com.example.ecommerce.R
+import com.example.ecommerce.constants.Resource
 import com.example.ecommerce.dataModel.User
 import com.example.ecommerce.model.loginViewModel.RegisterViewModel
 import com.example.ecommerce.presentation.navigation.Screen
 import com.example.ecommerce.ui.theme.GLightRed
 import com.example.ecommerce.ui.theme.bottomGradient
 import com.example.ecommerce.utils.RegisterValidation
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.launch
 
 
 @SuppressLint("CoroutineCreationDuringComposition")
@@ -69,6 +77,9 @@ fun RegisterScreen(
     navController: NavHostController,
     viewModel: RegisterViewModel = hiltViewModel()
 ){
+    var isLoading by remember {
+        mutableStateOf(false)
+    }
     val context = LocalContext.current
     var errorEmailMessage by remember {
         mutableStateOf("")
@@ -99,7 +110,8 @@ fun RegisterScreen(
             )
             .fillMaxSize()
             .fillMaxHeight()
-            .padding(top = 26.dp),
+            .padding(top = 26.dp)
+            .verticalScroll(rememberScrollState()),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(
@@ -313,15 +325,31 @@ fun RegisterScreen(
         Spacer(modifier = Modifier.height(23.dp))
         Button(
             onClick = {
-                viewModel.saveLoginState(true)
                 viewModel.createUserEmailAndPassword(User(name, lastname, email),password)
-                errorEmailMessage = ""
-                errorPassMessage = ""
-                navController.navigate("homeNav"){
-                    popUpTo("auth"){
-                        inclusive = true
+                viewModel.viewModelScope.launch {
+                    viewModel.register.collectLatest {
+                        when(viewModel.register.value){
+                            is Resource.Error -> {
+                                Toast.makeText(context,it.message, Toast.LENGTH_SHORT).show()
+                            }
+                            is Resource.Loading -> {
+                                isLoading = true
+                            }
+                            is Resource.Success -> {
+                                errorEmailMessage = ""
+                                errorPassMessage = ""
+                                viewModel.saveLoginState(true)
+                                navController.navigate("homeNav"){
+                                    popUpTo("auth"){
+                                        inclusive = true
+                                    }
+                                }
+                            }
+                            else-> Unit
+                        }
                     }
                 }
+
             },
             colors = ButtonDefaults.buttonColors(GLightRed),
             shape = RoundedCornerShape(topStart = 14.dp, bottomEnd = 14.dp),
@@ -329,6 +357,9 @@ fun RegisterScreen(
                 .align(Alignment.CenterHorizontally)
                 .width(210.dp)
         ) {
+            if(isLoading){
+                CircularProgressIndicator()
+            }
             Text(
                 text = "Register",
                 modifier = Modifier

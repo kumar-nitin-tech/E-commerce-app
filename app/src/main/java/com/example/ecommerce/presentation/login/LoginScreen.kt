@@ -19,6 +19,7 @@ import androidx.compose.foundation.text.ClickableText
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Divider
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.OutlinedButton
@@ -28,7 +29,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -49,6 +49,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.viewModelScope
 import androidx.navigation.NavHostController
 import com.example.ecommerce.R
 import com.example.ecommerce.constants.Resource
@@ -65,9 +66,10 @@ fun LoginScreen(
     viewModel: LoginViewModel = hiltViewModel()
 ){
     val context = LocalContext.current
-    val scope = rememberCoroutineScope()
     val columnSize = with(LocalDensity.current) { 300.dp.toPx() }
-
+    var isLoading by remember {
+        mutableStateOf(false)
+    }
     Column(
         Modifier
             .background(
@@ -202,7 +204,7 @@ fun LoginScreen(
                     Toast.makeText(context,"Enter the credentials",Toast.LENGTH_SHORT).show()
                 }else {
                     viewModel.login(emailLogin, passwordLogin)
-                    scope.launch {
+                    viewModel.viewModelScope.launch {
                         viewModel.login.collect {
                             when (it) {
                                 is Resource.Success -> {
@@ -213,10 +215,14 @@ fun LoginScreen(
                                         }
                                     }
                                 }
-                                else -> {
-                                    viewModel.saveLoginState(false)
-                                    Toast.makeText(context, it.message, Toast.LENGTH_SHORT).show()
+
+                                is Resource.Error -> {
+                                    Toast.makeText(context,it.message,Toast.LENGTH_SHORT).show()
                                 }
+                                is Resource.Loading -> {
+                                    isLoading = true
+                                }
+                                else -> Unit
                             }
                         }
                     }
@@ -228,6 +234,8 @@ fun LoginScreen(
                 .align(Alignment.CenterHorizontally)
                 .width(210.dp)
         ) {
+            if(isLoading)
+                CircularProgressIndicator()
             Text(
                 text = "Login",
                 modifier = Modifier

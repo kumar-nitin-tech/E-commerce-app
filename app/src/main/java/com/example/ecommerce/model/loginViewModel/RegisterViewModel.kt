@@ -14,8 +14,8 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
@@ -30,7 +30,7 @@ class RegisterViewModel @Inject constructor(
 
     //We don't want to expose the state of the app to public we create a copy of private for public
     private val _register = MutableStateFlow<Resource<User>>(Resource.Loading())
-    val register: Flow<Resource<User>> = _register
+    val register = _register.asStateFlow()
 
     private val _validation = Channel<RegisterFailedState>()
     val validation = _validation.receiveAsFlow()
@@ -43,7 +43,9 @@ class RegisterViewModel @Inject constructor(
                         //_register.value = Resource.Success()
                     }
                 }.addOnFailureListener {
-                    _register.value = Resource.Error(it.message.toString())
+                    viewModelScope.launch {
+                        _register.emit(Resource.Error(it.message.toString()))
+                    }
                 }
         }
         else{
@@ -62,10 +64,14 @@ class RegisterViewModel @Inject constructor(
             .document(userUid)
             .set(user)
             .addOnSuccessListener {
-                _register.value = Resource.Success(user)
+                viewModelScope.launch {
+                    _register.emit(Resource.Success(user))
+                }
             }
             .addOnFailureListener {
-                _register.value = Resource.Error(it.message.toString())
+                viewModelScope.launch {
+                    _register.emit(Resource.Error(it.message.toString()))
+                }
             }
     }
 
