@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.ecommerce.constants.Resource
 import com.example.ecommerce.dataModel.Address
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FirebaseFirestore
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -29,6 +30,8 @@ class AddressViewModel @Inject constructor(
 
     private val _address = MutableStateFlow<Resource<List<Address>>>(Resource.Unspecified())
     val address = _address.asStateFlow()
+
+    private var addressDocument = emptyList<DocumentSnapshot>()
 
     init {
         getUserAddress()
@@ -68,6 +71,15 @@ class AddressViewModel @Inject constructor(
                 }
         }else{
             viewModelScope.launch { _error.emit("All Fields are required") }
+        }
+    }
+
+    fun deleteAddress(deleteAddress: Address){
+        val index = address.value.data?.indexOf(deleteAddress)
+        if(index != null && index != -1){
+            val documentId = addressDocument[index].id
+            firestore.collection("user").document(auth.uid!!).collection("address")
+                .document(documentId).delete()
         }
     }
 

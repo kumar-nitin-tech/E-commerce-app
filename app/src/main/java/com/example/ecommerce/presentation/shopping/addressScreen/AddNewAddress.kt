@@ -41,6 +41,7 @@ import com.example.ecommerce.R
 import com.example.ecommerce.constants.Resource
 import com.example.ecommerce.dataModel.Address
 import com.example.ecommerce.presentation.navigation.Screen
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 
 @Composable
@@ -52,16 +53,6 @@ fun AddNewAddressScreen(
     var showLoading by remember{ mutableStateOf(false) }
 
     val inputErrorState by addressViewModel.error.collectAsState(initial = "")
-    var showError by remember {
-        mutableStateOf("")
-    }
-
-    if(showLoading){
-        CircularProgressIndicator()
-    }
-    if(showError != ""){
-        Toast.makeText(context,showError,Toast.LENGTH_SHORT).show()
-    }
 
     if(inputErrorState.isNotEmpty()){
         Toast.makeText(context,inputErrorState,Toast.LENGTH_SHORT).show()
@@ -281,6 +272,9 @@ fun AddNewAddressScreen(
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
             )
         }
+        if(showLoading){
+            CircularProgressIndicator()
+        }
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -289,37 +283,27 @@ fun AddNewAddressScreen(
             horizontalArrangement = Arrangement.SpaceAround
         ) {
             Button(onClick = {
-
-            }) {
-                Text(text = "Delete")
-            }
-            Button(onClick = {
                 addressViewModel.addAddress(Address(addressLocation,fullName,street,phoneNumber,city,state,pincode))
                 addressViewModel.viewModelScope.launch{
-                    when(addressViewModel.addNewAddress.value){
-                        is Resource.Error -> {
-                            showError = addressViewModel.addNewAddress.value.message.toString()
-                        }
-                        is Resource.Loading -> {
-                            showLoading = true
-                        }
-                        is Resource.Success -> {
-                            showLoading = false
-                            navController.navigate(Screen.AddressScreen.route){
-                                popUpTo(Screen.AddressScreen.route){
-                                    inclusive = true
-                                }
+                    addressViewModel.addNewAddress.collectLatest {
+                        when(it){
+                            is Resource.Error -> {
+                                Toast.makeText(context, it.message, Toast.LENGTH_SHORT).show()
                             }
+                            is Resource.Loading -> {
+                                showLoading = true
+                            }
+                            is Resource.Success -> {
+                                showLoading = false
+                                navController.navigate(Screen.AddressScreen.route)
+                            }
+                            else -> Unit
                         }
-                        else -> Unit
                     }
                 }
-                navController.navigate(Screen.AddressScreen.route){
-                    popUpTo(Screen.AddNewAddressScreen.route){
-                        inclusive = true
-                    }
-                }
-            }) {
+            },
+                modifier = Modifier.align(Alignment.CenterVertically)
+            ) {
                 Text(text = "Save")
             }
         }

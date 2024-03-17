@@ -120,8 +120,7 @@ fun OrderDetailScreen(
                                     Row(
                                         modifier = Modifier.fillMaxWidth(),
                                     ) {
-                                        val painter =
-                                            rememberAsyncImagePainter(model = cartProduct.product)
+                                        val painter = rememberAsyncImagePainter(model = cartProduct.product.imageUri)
                                         Image(
                                             painter = painter,
                                             contentDescription = null,
